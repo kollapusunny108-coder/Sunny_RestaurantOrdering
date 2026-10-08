@@ -1,0 +1,196 @@
+{% extends 'restaurant/base.html' %}
+{% load static %}
+
+{% block title %}
+  {% if order %}Track Order #{{ order.id }} | Gourmet Harbor{% else %}Track Your Food Order | Gourmet Harbor{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-9">
+      
+      <!-- Search Order Bar -->
+      <div class="card border-0 shadow-sm rounded-4 mb-4">
+        <div class="card-body p-4">
+          <form method="GET" action="{% url 'restaurant:order_track_search' %}" class="row g-2 align-items-center">
+            <div class="col-md-8">
+              <div class="input-group input-group-lg">
+                <span class="input-group-text bg-white"><i class="bi bi-search text-muted"></i></span>
+                <input type="number" class="form-control" name="order_id" placeholder="Enter your Order ID (e.g. 1)" 
+                       value="{{ order.id|default:search_id }}" required min="1">
+              </div>
+            </div>
+            <div class="col-md-4">
+              <button type="submit" class="btn btn-primary btn-lg w-100 rounded-pill fw-bold">
+                <i class="bi bi-crosshair me-1"></i> Track Order
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      {% if order %}
+        <!-- Order Tracking Active Card -->
+        <div class="tracking-card" id="orderTrackerContainer" 
+             data-order-id="{{ order.id }}" 
+             data-current-status="{{ order.status }}">
+          
+          <div class="d-flex flex-wrap justify-content-between align-items-center border-bottom pb-3 mb-4">
+            <div>
+              <span class="badge bg-light text-dark border px-3 py-2 rounded-pill fw-bold mb-2">
+                Table {{ order.table_number }}
+              </span>
+              <h2 class="fw-bold mb-0">Order {{ order.formatted_id }}</h2>
+              <div class="text-muted small">Placed at {{ order.created_at|date:"M d, Y - h:i A" }}</div>
+            </div>
+            <div class="text-md-end mt-3 mt-md-0">
+              <span class="badge fs-6 px-3 py-2 rounded-pill {{ order.badge_class }}" id="orderStatusBadge">
+                {{ order.get_status_display }}
+              </span>
+              <div class="text-muted smaller mt-1">
+                <i class="bi bi-arrow-repeat me-1"></i> Live tracking enabled
+              </div>
+            </div>
+          </div>
+
+          <!-- Step Progress Visualizer -->
+          <div class="my-5">
+            <div class="status-timeline">
+              <!-- Connecting Progress Line -->
+              <div class="status-timeline-progress" id="trackerProgressLine" 
+                   style="width: {% if order.status_step == 1 %}0%{% elif order.status_step == 2 %}33%{% elif order.status_step == 3 %}66%{% elif order.status_step == 4 %}100%{% else %}0%{% endif %};">
+              </div>
+
+              <!-- Step 1: Received -->
+              <div class="step-node {% if order.status_step > 1 %}completed{% elif order.status_step == 1 %}active{% endif %}" id="stepNode1">
+                <div class="step-circle">
+                  <i class="bi bi-clipboard2-check"></i>
+                </div>
+                <div class="step-title">1. Received</div>
+                <div class="text-muted smaller">Order queued</div>
+              </div>
+
+              <!-- Step 2: Preparing -->
+              <div class="step-node {% if order.status_step > 2 %}completed{% elif order.status_step == 2 %}active{% endif %}" id="stepNode2">
+                <div class="step-circle">
+                  <i class="bi bi-fire"></i>
+                </div>
+                <div class="step-title">2. Preparing</div>
+                <div class="text-muted smaller">Cooking in kitchen</div>
+              </div>
+
+              <!-- Step 3: Ready -->
+              <div class="step-node {% if order.status_step > 3 %}completed{% elif order.status_step == 3 %}active{% endif %}" id="stepNode3">
+                <div class="step-circle">
+                  <i class="bi bi-bell-fill"></i>
+                </div>
+                <div class="step-title">3. Ready</div>
+                <div class="text-muted smaller">Plated & ready</div>
+              </div>
+
+              <!-- Step 4: Completed -->
+              <div class="step-node {% if order.status_step == 4 %}completed active{% endif %}" id="stepNode4">
+                <div class="step-circle">
+                  <i class="bi bi-check2-circle"></i>
+                </div>
+                <div class="step-title">4. Completed</div>
+                <div class="text-muted smaller">Served to table</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Order Summary Details -->
+          <div class="row g-4 mt-2">
+            <div class="col-md-7">
+              <h5 class="fw-bold mb-3"><i class="bi bi-list-check text-primary me-2"></i> Items in this Order</h5>
+              <div class="table-responsive">
+                <table class="table table-borderless align-middle">
+                  <tbody>
+                    {% for it in order.items.all %}
+                      <tr class="border-bottom">
+                        <td style="width: 45px;">
+                          <img src="{{ it.menu_item.image_url|default:'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=100&q=80' }}" 
+                               alt="{{ it.menu_item.name }}" class="rounded-2" style="width: 40px; height: 40px; object-fit: cover;">
+                        </td>
+                        <td>
+                          <div class="fw-semibold">{{ it.menu_item.name }}</div>
+                          <div class="text-muted smaller">${{ it.price }} &times; {{ it.quantity }}</div>
+                        </td>
+                        <td class="text-end fw-bold">
+                          ${{ it.subtotal }}
+                        </td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+
+              {% if order.special_notes %}
+                <div class="alert alert-light border mt-3">
+                  <div class="small fw-bold text-muted mb-1"><i class="bi bi-info-circle me-1"></i> Special Kitchen Request:</div>
+                  <div class="small">{{ order.special_notes }}</div>
+                </div>
+              {% endif %}
+            </div>
+
+            <div class="col-md-5">
+              <div class="bg-light p-4 rounded-4">
+                <h6 class="fw-bold mb-3 text-dark">Order Information</h6>
+                <div class="d-flex justify-content-between small text-muted mb-2">
+                  <span>Customer:</span>
+                  <span class="text-dark fw-semibold">{{ order.customer_name }}</span>
+                </div>
+                <div class="d-flex justify-content-between small text-muted mb-2">
+                  <span>Contact:</span>
+                  <span class="text-dark fw-semibold">{{ order.customer_phone }}</span>
+                </div>
+                <div class="d-flex justify-content-between small text-muted mb-2">
+                  <span>Dining Location:</span>
+                  <span class="text-dark fw-semibold">{{ order.table_number }}</span>
+                </div>
+                <hr>
+                <div class="d-flex justify-content-between small text-muted mb-1">
+                  <span>Subtotal:</span>
+                  <span class="text-dark">${{ order.subtotal_amount }}</span>
+                </div>
+                <div class="d-flex justify-content-between small text-muted mb-2">
+                  <span>Tax (5%):</span>
+                  <span class="text-dark">${{ order.tax_amount }}</span>
+                </div>
+                <div class="d-flex justify-content-between fs-5 fw-bold text-dark pt-2 border-top">
+                  <span>Total Paid:</span>
+                  <span class="text-primary">${{ order.total_amount }}</span>
+                </div>
+              </div>
+
+              <div class="d-grid gap-2 mt-4">
+                <a href="{% url 'restaurant:menu' %}" class="btn btn-outline-secondary rounded-pill">
+                  <i class="bi bi-plus-circle me-1"></i> Order More Food
+                </a>
+                <a href="{% url 'restaurant:kitchen_dashboard' %}" class="btn btn-link text-warning text-decoration-none small">
+                  <i class="bi bi-arrow-right-short"></i> View on Kitchen Dashboard
+                </a>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      {% else %}
+        <!-- Search Prompt Empty State -->
+        <div class="text-center py-5 bg-white rounded-4 border p-5 shadow-sm">
+          <div class="p-3 bg-light rounded-circle d-inline-block mb-3">
+            <i class="bi bi-search fs-1 text-primary"></i>
+          </div>
+          <h4 class="fw-bold">Look Up Your Food Order</h4>
+          <p class="text-muted">Enter the Order ID you received during checkout to view real-time cooking progress.</p>
+          <div class="small text-muted mt-2">
+            Example: Try searching for <strong>Order #1</strong> to test the tracking pipeline!
+          </div>
+        </div>
+      {% endif %}
+
+    </div>
+  </div>
+</div>
+{% endblock %}

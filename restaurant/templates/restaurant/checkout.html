@@ -1,0 +1,179 @@
+{% extends 'restaurant/base.html' %}
+{% load static %}
+
+{% block title %}Checkout & Confirm Order | Gourmet Harbor{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+  <div class="row justify-content-center">
+    <div class="col-lg-10">
+      
+      <!-- Page Header -->
+      <div class="d-flex align-items-center justify-content-between mb-4 border-bottom pb-3">
+        <div>
+          <h2 class="fw-bold mb-1">
+            <i class="bi bi-bag-check text-primary me-2"></i> Review & Place Order
+          </h2>
+          <p class="text-muted small mb-0">Confirm your selected dishes, table details, and kitchen instructions.</p>
+        </div>
+        <a href="{% url 'restaurant:menu' %}" class="btn btn-outline-secondary rounded-pill btn-sm">
+          <i class="bi bi-arrow-left me-1"></i> Add More Items
+        </a>
+      </div>
+
+      <div class="row g-4">
+        
+        <!-- Left Column: Customer & Table Details Form -->
+        <div class="col-lg-6">
+          <div class="card border-0 shadow-sm rounded-4 h-100">
+            <div class="card-header bg-white border-bottom py-3">
+              <h5 class="fw-bold mb-0 text-dark">
+                <i class="bi bi-person-lines-fill text-primary me-2"></i> Customer & Table Info
+              </h5>
+            </div>
+            <div class="card-body p-4">
+              <form method="POST" action="{% url 'restaurant:checkout' %}" id="checkoutForm">
+                {% csrf_token %}
+
+                <div class="mb-3">
+                  <label for="customer_name" class="form-label fw-semibold">
+                    Customer Name <span class="text-danger">*</span>
+                  </label>
+                  {{ form.customer_name }}
+                  <div class="form-text">Name for order callout and kitchen ticket.</div>
+                </div>
+
+                <div class="mb-3">
+                  <label for="customer_phone" class="form-label fw-semibold">
+                    Contact Phone <span class="text-danger">*</span>
+                  </label>
+                  {{ form.customer_phone }}
+                  <div class="form-text">Used for SMS status updates & order inquiries.</div>
+                </div>
+
+                <div class="mb-3">
+                  <label for="table_number" class="form-label fw-semibold">
+                    Table Number or Service Type <span class="text-danger">*</span>
+                  </label>
+                  <div class="input-group">
+                    <span class="input-group-text bg-light"><i class="bi bi-geo-alt"></i></span>
+                    {{ form.table_number }}
+                  </div>
+                  <div class="form-text">e.g. "Table 4", "Booth B", or "Takeaway Counter".</div>
+                </div>
+
+                <div class="mb-4">
+                  <label for="special_notes" class="form-label fw-semibold">
+                    Special Kitchen Instructions (Optional)
+                  </label>
+                  {{ form.special_notes }}
+                  <div class="form-text">Allergies, spice levels, dressing on the side, etc.</div>
+                </div>
+
+                <div class="d-grid">
+                  <button type="submit" class="btn btn-primary btn-lg rounded-pill fw-bold shadow-sm" id="btnSubmitOrder"
+                          {% if not cart_items %}disabled{% endif %}>
+                    <i class="bi bi-send-check-fill me-2"></i> Submit Order to Kitchen
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right Column: Order Summary & Live Calculations -->
+        <div class="col-lg-6">
+          <div class="card border-0 shadow-sm rounded-4 h-100">
+            <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
+              <h5 class="fw-bold mb-0 text-dark">
+                <i class="bi bi-receipt-cutoff text-primary me-2"></i> Order Summary
+              </h5>
+              <span class="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-3">
+                Live Calculation
+              </span>
+            </div>
+
+            <div class="card-body p-4 d-flex flex-column">
+              <!-- Itemized List -->
+              <div id="checkoutSummaryItems" class="flex-grow-1 overflow-auto mb-4" style="max-height: 380px;">
+                {% if cart_items %}
+                  {% for it in cart_items %}
+                    <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                      <div class="d-flex align-items-center gap-2">
+                        <div class="qty-control">
+                          <button type="button" class="qty-btn" data-item-id="{{ it.id }}" data-action="dec">-</button>
+                          <span class="qty-val" data-item-id="{{ it.id }}">{{ it.quantity }}</span>
+                          <button type="button" class="qty-btn" data-item-id="{{ it.id }}" data-action="inc">+</button>
+                        </div>
+                        <div>
+                          <span class="fw-semibold">{{ it.name }}</span>
+                          <div class="text-muted smaller">${{ it.price }} each</div>
+                        </div>
+                      </div>
+                      <div class="text-end">
+                        <span class="fw-bold text-dark">${{ it.subtotal }}</span>
+                        <button type="button" class="btn btn-link text-danger p-0 ms-2 btn-remove-item" data-item-id="{{ it.id }}">
+                          <i class="bi bi-trash3"></i>
+                        </button>
+                      </div>
+                    </div>
+                  {% endfor %}
+                {% else %}
+                  <div class="text-center py-5 text-muted">
+                    <i class="bi bi-cart-x fs-1 d-block mb-2 text-secondary"></i>
+                    Your cart is currently empty.
+                    <div class="mt-3">
+                      <a href="{% url 'restaurant:menu' %}" class="btn btn-primary btn-sm rounded-pill px-3">
+                        Browse Food Menu
+                      </a>
+                    </div>
+                  </div>
+                {% endif %}
+              </div>
+
+              <!-- Price Breakdown Box -->
+              <div class="bg-light p-3 rounded-3 mt-auto">
+                <div class="d-flex justify-content-between text-muted mb-2">
+                  <span>Subtotal</span>
+                  <span id="checkoutSubtotal" class="fw-semibold text-dark">${{ subtotal|default:"0.00" }}</span>
+                </div>
+                <div class="d-flex justify-content-between text-muted mb-2">
+                  <span>Tax (5% Restaurant Sales Tax)</span>
+                  <span id="checkoutTax" class="fw-semibold text-dark">${{ tax|default:"0.00" }}</span>
+                </div>
+                <div class="d-flex justify-content-between text-muted mb-2">
+                  <span>Kitchen Service Fee</span>
+                  <span class="text-success fw-bold">FREE ($0.00)</span>
+                </div>
+                <hr class="my-2">
+                <div class="d-flex justify-content-between align-items-center fs-5 fw-bold">
+                  <span>Total Amount</span>
+                  <span id="checkoutTotal" class="text-primary">${{ grand_total|default:"0.00" }}</span>
+                </div>
+              </div>
+
+              <div class="text-muted smaller text-center mt-3">
+                <i class="bi bi-shield-lock-fill text-success me-1"></i> Totals verified server-side. Your cart is cleared immediately upon submission.
+              </div>
+
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Clear local storage cart state on checkout form submission
+  document.getElementById('checkoutForm')?.addEventListener('submit', () => {
+    try {
+      localStorage.removeItem('restaurant_cart_state');
+    } catch (e) {}
+  });
+</script>
+{% endblock %}

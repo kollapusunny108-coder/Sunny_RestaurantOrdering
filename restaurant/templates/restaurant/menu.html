@@ -1,0 +1,202 @@
+{% extends 'restaurant/base.html' %}
+{% load static %}
+
+{% block title %}Explore Delicious Food Menu | Gourmet Harbor{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero-banner text-center text-md-start">
+  <div class="container position-relative">
+    <div class="row align-items-center gy-4">
+      <div class="col-lg-7">
+        <span class="badge bg-warning text-dark px-3 py-2 rounded-pill fw-bold mb-3">
+          <i class="bi bi-stars me-1"></i> Artisan Fresh Kitchen
+        </span>
+        <h1 class="hero-title text-white mb-3">
+          Savor Every Bite, <span>Ordered with Ease.</span>
+        </h1>
+        <p class="text-light opacity-75 fs-5 mb-4">
+          Browse our chef's hand-crafted specials, customize your selection, and track your meal in real-time as our kitchen cooks it to perfection.
+        </p>
+        <div class="d-flex flex-wrap gap-3">
+          <a href="#menuSection" class="btn btn-primary btn-lg rounded-pill px-4 fw-bold shadow">
+            <i class="bi bi-arrow-down-circle me-1"></i> Explore Menu
+          </a>
+          <a href="{% url 'restaurant:order_track_search' %}" class="btn btn-outline-light btn-lg rounded-pill px-4 fw-semibold">
+            <i class="bi bi-search me-1"></i> Track Order Status
+          </a>
+        </div>
+      </div>
+      <div class="col-lg-5 text-center d-none d-lg-block">
+        <div class="position-relative d-inline-block">
+          <img src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=650&q=80" 
+               alt="Chef Table Platter" 
+               class="rounded-4 shadow-lg border border-3 border-white border-opacity-25" 
+               style="max-width: 440px; height: 320px; object-fit: cover;">
+          <div class="position-absolute bottom-0 start-0 translate-middle-y bg-white text-dark p-3 rounded-4 shadow-lg ms-n3 border">
+            <div class="d-flex align-items-center gap-2">
+              <div class="bg-success text-white p-2 rounded-circle">
+                <i class="bi bi-clock-history fs-5"></i>
+              </div>
+              <div class="text-start">
+                <div class="small fw-bold">Live Kitchen Prep</div>
+                <div class="text-muted smaller">Avg. 15 mins</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Filter, Search, and Category Bar -->
+<div class="container" id="menuSection">
+  <div class="filter-wrapper shadow-sm">
+    <div class="row g-3 align-items-center justify-content-between">
+      
+      <!-- Category Pills -->
+      <div class="col-xl-7 col-lg-8">
+        <div class="d-flex flex-wrap gap-2 align-items-center">
+          <span class="text-muted small fw-bold me-1 d-none d-md-inline">Categories:</span>
+          
+          <a href="{% url 'restaurant:menu' %}{% if veg_only %}?veg=1{% endif %}" 
+             class="cat-pill {% if selected_category == 'all' %}active{% endif %}">
+            <i class="bi bi-grid-fill"></i> All Items
+          </a>
+
+          {% for cat in categories %}
+            <a href="?category={{ cat.slug }}{% if veg_only %}&veg=1{% endif %}{% if search_query %}&q={{ search_query }}{% endif %}" 
+               class="cat-pill {% if selected_category == cat.slug %}active{% endif %}">
+              <i class="bi {{ cat.icon|default:'bi-tag' }}"></i> {{ cat.name }}
+            </a>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Search & Vegetarian Toggle -->
+      <div class="col-xl-5 col-lg-4">
+        <div class="d-flex flex-wrap flex-sm-nowrap align-items-center gap-3 justify-content-lg-end">
+          
+          <!-- Vegetarian Only Toggle -->
+          <form method="GET" class="d-flex align-items-center m-0">
+            {% if selected_category and selected_category != 'all' %}
+              <input type="hidden" name="category" value="{{ selected_category }}">
+            {% endif %}
+            {% if search_query %}
+              <input type="hidden" name="q" value="{{ search_query }}">
+            {% endif %}
+            <div class="form-check form-switch m-0 d-flex align-items-center gap-2">
+              <input class="form-check-input" type="checkbox" role="switch" id="vegFilterSwitch" name="veg" value="1" 
+                     {% if veg_only %}checked{% endif %} onchange="this.form.submit()">
+              <label class="form-check-label dietary-switch-label" for="vegFilterSwitch">
+                <span class="diet-indicator veg position-static d-inline-flex me-1" style="width: 14px; height: 14px;"></span> Veg Only
+              </label>
+            </div>
+          </form>
+
+          <!-- Search Input Box -->
+          <div class="input-group input-group-sm" style="max-width: 240px;">
+            <span class="input-group-text bg-white border-end-0 text-muted"><i class="bi bi-search"></i></span>
+            <input type="text" class="form-control border-start-0" id="menuSearchInput" 
+                   placeholder="Search dishes..." value="{{ search_query }}">
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Food Cards Grid Section -->
+<section class="container py-5">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h3 class="fw-bold mb-1">
+        {% if selected_category == 'all' %}
+          Full Menu Selection
+        {% else %}
+          Featured {{ selected_category|title }}
+        {% endif %}
+      </h3>
+      <p class="text-muted small mb-0">Showing {{ menu_items|length }} delicious items ready for ordering</p>
+    </div>
+    {% if veg_only or selected_category != 'all' or search_query %}
+      <a href="{% url 'restaurant:menu' %}" class="btn btn-outline-secondary btn-sm rounded-pill">
+        <i class="bi bi-x-circle me-1"></i> Reset Filters
+      </a>
+    {% endif %}
+  </div>
+
+  {% if menu_items %}
+    <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 row-cols-xl-4 g-4" id="foodItemsGrid">
+      {% for item in menu_items %}
+        <div class="col food-card-col">
+          <div class="food-card">
+            
+            <!-- Image & Badges Container -->
+            <div class="food-img-container">
+              <!-- Vegetarian / Non-Veg Standard Dot Badge -->
+              <div class="diet-indicator {% if item.is_vegetarian %}veg{% else %}non-veg{% endif %}" 
+                   title="{% if item.is_vegetarian %}Vegetarian Friendly{% else %}Non-Vegetarian{% endif %}">
+              </div>
+
+              <!-- Prep Time Badge -->
+              <div class="prep-time-badge">
+                <i class="bi bi-clock me-1"></i>{{ item.preparation_time }} mins
+              </div>
+
+              <!-- Main Food Thumbnail -->
+              <img src="{{ item.image_url|default:'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=700&q=80' }}" 
+                   alt="{{ item.name }}" class="food-img" loading="lazy">
+            </div>
+
+            <!-- Card Body Content -->
+            <div class="food-body">
+              <div class="d-flex justify-content-between align-items-center mb-1">
+                <span class="badge bg-light text-secondary border small">{{ item.category.name }}</span>
+                {% if item.is_vegetarian %}
+                  <span class="badge bg-success-subtle text-success border border-success-subtle small">
+                    <i class="bi bi-flower1 me-1"></i>Pure Veg
+                  </span>
+                {% endif %}
+              </div>
+
+              <h5 class="food-title">{{ item.name }}</h5>
+              <p class="food-description">{{ item.description|truncatechars:115 }}</p>
+
+              <!-- Footer with Price and Add to Order Button -->
+              <div class="food-footer">
+                <div class="food-price">${{ item.price }}</div>
+
+                {% if item.is_available %}
+                  <button type="button" class="btn btn-add-cart d-flex align-items-center" 
+                          data-item-id="{{ item.id }}" 
+                          id="addToCartBtn{{ item.id }}">
+                    <i class="bi bi-plus-lg me-1"></i> Add to Order
+                  </button>
+                {% else %}
+                  <span class="out-of-stock-badge">
+                    <i class="bi bi-slash-circle me-1"></i> Sold Out
+                  </span>
+                {% endif %}
+              </div>
+            </div>
+
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <div class="text-center py-5 bg-white rounded-4 border p-5 shadow-sm">
+      <i class="bi bi-search fs-1 text-muted d-block mb-3"></i>
+      <h4 class="fw-bold">No dishes found</h4>
+      <p class="text-muted">We couldn't find any items matching your selected criteria.</p>
+      <a href="{% url 'restaurant:menu' %}" class="btn btn-primary rounded-pill px-4">
+        View Entire Menu
+      </a>
+    </div>
+  {% endif %}
+</section>
+{% endblock %}
